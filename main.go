@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go/token"
 	"net/http"
 	"time"
 
@@ -10,6 +11,31 @@ import (
 
 var SECRET = []byte("super-secret-auth-key")
 
+
+func validateJwt(next func(w http.ResponseWriter, r* http.Request)) http.Handler {
+	return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
+		if r.Header["token"] != nil {
+			token, err := jwt.Parse(r.Header["token"][0], func(t *jwt.Token) (interface{}, error) {
+				_, ok := t.Method.(*jwt.SigningMethodHMAC)
+				if !ok {
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte("Unauthorized"))
+				}
+				return SECRET, nil
+			})
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Unauthorized " + err.Error() ))
+			}
+			if token.Valid {
+				next(w, r)
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Unauthorized"))
+			}
+		}
+	})
+}
 
 func createJwt() (string, error) {
 	token := jwt.New(jwt.SigningMethodHS384)
