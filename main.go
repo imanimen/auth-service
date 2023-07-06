@@ -46,16 +46,20 @@ func createJwt() (string, error) {
 	})
 	tokenStr, err := token.SignedString(SECRET)
 	if err != nil {
-		fmt.Println(err.Error())
-		return "", err
+		errMsg := fmt.Sprintf("Error creating JWT: %s", err.Error())
+		fmt.Println(errMsg)
+		return "", fmt.Errorf(errMsg)
 	}
 	return tokenStr, nil
 }
 
 func getJwt(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("api") == api_key {
+	if r.Header.Get("Authorization") == api_key {
 		token, err := createJwt()
 		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			errMsg := fmt.Sprintf("Error creating JWT: %s", err.Error())
+			w.Write([]byte(errMsg))
 			return
 		}
 		fmt.Fprint(w, token)
