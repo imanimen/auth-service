@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"go/token"
 	"net/http"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 var SECRET = []byte("super-secret-auth-key")
 
+var api_key = "1234"
 
 func validateJwt(next func(w http.ResponseWriter, r* http.Request)) http.Handler {
 	return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
@@ -49,11 +49,26 @@ func createJwt() (string, error) {
 	return tokenStr, nil
 }
 
+
+
+func getJwt(w http.ResponseWriter, r *http.Request) {
+	if r.Header["api"] != nil {
+		if r.Header["api"][0] == api_key {
+			token, err := createJwt()
+			if err != nil {
+				return 
+			}
+			fmt.Fprint(w, token)
+		}
+	}
+}
+
 func Home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "seper secret api")
 }
 
 func main() {
-	http.HandleFunc("/api", Home)
+	http.Handle("/api", validateJwt(Home))
+	http.HandleFunc("/jwt", getJwt)
 	http.ListenAndServe(":8080", nil)
 }
